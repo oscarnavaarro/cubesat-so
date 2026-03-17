@@ -1,0 +1,23 @@
+#include <HardwareSerial.h>
+#include "globals.h"
+#include "modes.h"
+#include "../include/task_leds_pulsing.h"
+
+void vTaskLedsPulsing(void *pvParameters) {
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(50); // 20Hz por ejemplo
+
+    // el mensaje codificado se recupera de la MRAM (8Mb)
+    uint8_t mensaje[] = {1, 0, 0, 0, 0};
+    int i = 0;
+
+    for (;;) {
+        if (currentMode == MODE_NOMINAL) {
+            // actuación sobre el driver de LEDs del payload
+            digitalWrite(LED_PIN, mensaje[i]);
+            i = (i + 1) % 5;
+        }
+        // garantizamos que no haya deriva temporal
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+    }
+}
