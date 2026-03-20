@@ -1,6 +1,80 @@
 #include "globals.h"
-#include "modes.h"
 #include "../include/task_health.h"
+#include "../include/task_solver.h"
+#include "../include/battery.h"
+#include <SPIFFS.h>
+#include <string.h>
+
+uint8_t telemetryBuffer[TELEMETRY_BUFFER_SIZE] = {0};
+bool systemOK = true;
+
+namespace {
+struct TelemetryFrame {
+    uint32_t uptimeMs;
+    float temperatureC;
+    float batteryPercent;
+    uint8_t status;
+    uint8_t crc;
+};
+
+constexpr uint8_t kXorKey = 0x5A;
+
+uint8_t computeXorCrc(const uint8_t *data, size_t len) {
+    uint8_t crc = 0;
+    for (size_t i = 0; i < len; ++i) {
+        crc ^= data[i];
+    }
+    return crc;
+}
+} // namespace
+
+float readInternalTemp(void) {
+    // Simulacion simple de una temperatura interna en rango nominal.
+    return random(250, 850) / 10.0f;
+}
+
+float readBatteryLevel(void) {
+    return static_cast<float>(simulateBatteryLevel());
+}
+
+void packAndEncryptTelemetry(float currentTemp, float currentBattery, bool isSystemOK) {
+    TelemetryFrame frame{};
+    frame.uptimeMs = millis();
+    frame.temperatureC = currentTemp;
+    frame.batteryPercent = currentBattery;
+    frame.status = isSystemOK ? 1 : 0;
+
+    uint8_t raw[sizeof(TelemetryFrame)] = {0};
+    memcpy(raw, &frame, sizeof(TelemetryFrame));
+    frame.crc = computeXorCrc(raw, sizeof(TelemetryFrame) - 1);
+    memcpy(raw, &frame, sizeof(TelemetryFrame));
+
+    for (size_t i = 0; i < sizeof(TelemetryFrame); ++i) {
+        raw[i] ^= kXorKey;
+    }
+
+    const size_t copyLen = sizeof(TelemetryFrame) <= TELEMETRY_BUFFER_SIZE ? sizeof(TelemetryFrame)
+                                                                            : TELEMETRY_BUFFER_SIZE;
+    memcpy(telemetryBuffer, raw, copyLen);
+
+    static bool storageReady = false;
+    if (!storageReady) {
+        storageReady = SPIFFS.begin(true);
+        if (!storageReady) {
+            Serial.println("[HEALTH] No se pudo inicializar SPIFFS para telemetria de prueba.");
+        }
+    }
+
+    if (storageReady) {
+        File telemetryFile = SPIFFS.open("/telemetry_mock.bin", FILE_APPEND);
+        if (telemetryFile) {
+            telemetryFile.write(raw, sizeof(TelemetryFrame));
+            telemetryFile.close();
+        } else {
+            Serial.println("[HEALTH] No se pudo abrir /telemetry_mock.bin");
+        }
+    }
+}
 
 void vTaskHealth(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();

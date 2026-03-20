@@ -1,6 +1,4 @@
-#include <HardwareSerial.h>
 #include "globals.h"
-#include "modes.h"
 #include "../include/task_leds_pulsing.h"
 
 void vTaskLedsPulsing(void *pvParameters) {

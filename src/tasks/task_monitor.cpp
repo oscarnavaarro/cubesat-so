@@ -1,5 +1,3 @@
-#include <HardwareSerial.h>
-#include "task_monitor.h"
 #include "globals.h"
 #include "../include/task_monitor.h"
 

@@ -1,6 +1,4 @@
-#include <HardwareSerial.h>
 #include "globals.h"
-#include "modes.h"
 #include "../include/task_post_deployment.h"
 
 void vTaskPostDeployment(void *pvParameters) {

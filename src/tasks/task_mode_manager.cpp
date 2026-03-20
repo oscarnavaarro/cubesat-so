@@ -1,5 +1,4 @@
 #include "globals.h"
-#include "modes.h"
 #include "../include/task_mode_manager.h"
 
 // Simulación del nivel de batería

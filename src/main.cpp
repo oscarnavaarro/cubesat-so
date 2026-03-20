@@ -1,6 +1,4 @@
-#include <HardwareSerial.h>
 #include "globals.h"
-#include "modes.h"
 #include "battery.h"
 #include "../include/task_health.h"
 #include "../include/task_monitor.h"
@@ -16,8 +14,6 @@ void setup() {
     digitalWrite(LED_PIN, LOW);
 
     Serial.println("\n[BOOT] Iniciando scheduler de tareas...");
-
-    currentMode = MODE_DEPLOYMENT;
 
     xTaskCreatePinnedToCore(vTaskMonitor, "Monitor", 4096, NULL, 3, &hMonitor, 1);
     //xTaskCreatePinnedToCore(vTaskChecking, "Checking", 3072, NULL, 3, &hChecking, 1);

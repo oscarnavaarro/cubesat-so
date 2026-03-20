@@ -8,4 +8,4 @@ TaskHandle_t hModeManager = NULL;
 TaskHandle_t hPostDeploy = NULL;
 TaskHandle_t ledsPulsingHandle = NULL;
 
-SatMode_t currentMode = MODE_INICIALIZATION;
+SatMode_t currentMode = MODE_SAFE;
