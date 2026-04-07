@@ -29,8 +29,7 @@ uint8_t computeXorCrc(const uint8_t *data, size_t len) {
 } // namespace
 
 float readInternalTemp(void) {
-    // Simulacion simple de una temperatura interna en rango nominal.
-    return random(250, 850) / 10.0f;
+    return static_cast<float>(readManualTemperature());
 }
 
 float readBatteryLevel(void) {

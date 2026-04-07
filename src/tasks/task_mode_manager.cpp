@@ -1,13 +1,12 @@
 #include "globals.h"
 #include "../include/task_mode_manager.h"
-
-// Simulación del nivel de batería
-int simulateBatteryLevel(void);
+#include "../include/battery.h"
 
 void vTaskModeManager(void *pvParameters) {
     for (;;) {
+        processManualInputFromSerial();
+
         int battery_level = simulateBatteryLevel();
-        Serial.printf("[BATTERY] Nivel simulado: %d%%\n", battery_level);
 
         // si se detecta batería baja, cambia a LOW_POWER
         if (currentMode == MODE_NOMINAL && battery_level < 20) {

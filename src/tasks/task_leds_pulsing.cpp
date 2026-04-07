@@ -10,12 +10,9 @@ void vTaskLedsPulsing(void *pvParameters) {
     int i = 0;
 
     for (;;) {
-        if (currentMode == MODE_NOMINAL) {
-            // actuación sobre el driver de LEDs del payload
-            digitalWrite(LED_PIN, mensaje[i]);
-            i = (i + 1) % 5;
-        }
-        // garantizamos que no haya deriva temporal
+        // actuación sobre el driver de LEDs del payload
+        digitalWrite(LED_PIN, mensaje[i]);
+        i = (i + 1) % 5;
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }

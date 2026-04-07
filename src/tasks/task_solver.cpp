@@ -1,7 +1,6 @@
 #include "globals.h"
 #include "../include/task_solver.h"
 
-
 // Lógica del SOLVER: aplica acciones correctivas según el fallo
 void vSolver(SolverError_t errorID) {
     Serial.printf("[SOLVER] Aplicando estrategia para error ID: %d\n", errorID);
