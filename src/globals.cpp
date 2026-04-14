@@ -1,5 +1,20 @@
 #include "globals.h"
 
+const char *modeToString(SatMode_t mode) {
+    switch (mode) {
+        case MODE_NOMINAL:
+            return "NOMINAL";
+        case MODE_LOW_POWER:
+            return "LOW_POWER";
+        case MODE_SAFE:
+            return "SAFE";
+        case MODE_COOLING:
+            return "COOLING";
+        default:
+            return "UNKNOWN";
+    }
+}
+
 QueueHandle_t modeQueue = NULL;
 TaskHandle_t hMonitor = NULL;
 TaskHandle_t hChecking = NULL;

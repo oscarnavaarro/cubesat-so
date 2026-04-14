@@ -15,4 +15,8 @@ void vTaskLedsPulsing(void *pvParameters) {
         i = (i + 1) % 5;
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
+
+    digitalWrite(LED_PIN, LOW);
+    ledsPulsingHandle = NULL;
+    vTaskDelete(NULL);
 }

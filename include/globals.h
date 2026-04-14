@@ -49,4 +49,6 @@ extern volatile HealthStatus_t healthStatus;
 extern volatile SolverError_t healthError;
 extern volatile SatMode_t healthProposedMode;
 
+const char *modeToString(SatMode_t mode);
+
 #endif // GLOBALS_H

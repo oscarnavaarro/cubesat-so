@@ -87,8 +87,9 @@ void vTaskHealth(void *pvParameters) {
             systemOK = true;
             healthStatus = HEALTH_OK;
             healthError = NO_ERROR;
-            Serial.printf("[HEALTH] OK | Modo propuesto: %d | Bat: %.1f%% | Temp: %.1f C\n",
-                          proposedMode,
+            Serial.printf("[HEALTH] OK | Modo actual: %s | Modo propuesto: %s | Bat: %.1f%% | Temp: %.1f C\n",
+                          modeToString(currentMode),
+                          modeToString(proposedMode),
                           currentBattery,
                           currentTemp);
             xFrequency = pdMS_TO_TICKS(2000);

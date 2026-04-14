@@ -8,7 +8,6 @@ void vTaskPostDeployment(void *pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(5000));
 
     Serial.printf("[DEPLOY] Antenas desplegadas. Iniciando COMISSIONING...\n");
-    currentMode = MODE_NOMINAL;
 
     hPostDeploy = NULL;
     vTaskDelete(NULL);
