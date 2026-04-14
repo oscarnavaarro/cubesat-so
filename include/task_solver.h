@@ -3,6 +3,6 @@
 
 #include "globals.h"
 
-void vSolver(SolverError_t errorID);
+void vTaskSolver(void *pvParameters);
 
 #endif // TASK_SOLVER_H

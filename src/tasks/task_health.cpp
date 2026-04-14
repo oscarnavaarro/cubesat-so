@@ -1,6 +1,5 @@
 #include "globals.h"
 #include "../include/task_health.h"
-#include "../include/task_solver.h"
 #include "../include/battery.h"
 #include <SPIFFS.h>
 #include <string.h>
@@ -17,14 +16,28 @@ struct TelemetryFrame {
     uint8_t crc;
 };
 
-constexpr uint8_t kXorKey = 0x5A;
-
-uint8_t computeXorCrc(const uint8_t *data, size_t len) {
-    uint8_t crc = 0;
-    for (size_t i = 0; i < len; ++i) {
-        crc ^= data[i];
+SatMode_t modeFromTemperature(float temperatureC) {
+    if (temperatureC > TEMP_SAFE_HIGH_THRESHOLD || temperatureC < TEMP_SAFE_LOW_THRESHOLD) {
+        return MODE_SAFE;
     }
-    return crc;
+    if (temperatureC >= TEMP_COOLING_THRESHOLD) {
+        return MODE_COOLING;
+    }
+    return MODE_NOMINAL;
+}
+
+SatMode_t modeFromBattery(float batteryPercent) {
+    if (batteryPercent < BATTERY_SAFE_THRESHOLD) {
+        return MODE_SAFE;
+    }
+    if (batteryPercent <= BATTERY_NOMINAL_THRESHOLD) {
+        return MODE_LOW_POWER;
+    }
+    return MODE_NOMINAL;
+}
+
+SatMode_t chooseMostRestrictiveMode(SatMode_t batteryMode, SatMode_t temperatureMode) {
+    return (static_cast<int>(batteryMode) >= static_cast<int>(temperatureMode)) ? batteryMode : temperatureMode;
 }
 } // namespace
 
@@ -36,44 +49,6 @@ float readBatteryLevel(void) {
     return static_cast<float>(simulateBatteryLevel());
 }
 
-void packAndEncryptTelemetry(float currentTemp, float currentBattery, bool isSystemOK) {
-    TelemetryFrame frame{};
-    frame.uptimeMs = millis();
-    frame.temperatureC = currentTemp;
-    frame.batteryPercent = currentBattery;
-    frame.status = isSystemOK ? 1 : 0;
-
-    uint8_t raw[sizeof(TelemetryFrame)] = {0};
-    memcpy(raw, &frame, sizeof(TelemetryFrame));
-    frame.crc = computeXorCrc(raw, sizeof(TelemetryFrame) - 1);
-    memcpy(raw, &frame, sizeof(TelemetryFrame));
-
-    for (size_t i = 0; i < sizeof(TelemetryFrame); ++i) {
-        raw[i] ^= kXorKey;
-    }
-
-    const size_t copyLen = sizeof(TelemetryFrame) <= TELEMETRY_BUFFER_SIZE ? sizeof(TelemetryFrame)
-                                                                            : TELEMETRY_BUFFER_SIZE;
-    memcpy(telemetryBuffer, raw, copyLen);
-
-    static bool storageReady = false;
-    if (!storageReady) {
-        storageReady = SPIFFS.begin(true);
-        if (!storageReady) {
-            Serial.println("[HEALTH] No se pudo inicializar SPIFFS para telemetria de prueba.");
-        }
-    }
-
-    if (storageReady) {
-        File telemetryFile = SPIFFS.open("/telemetry_mock.bin", FILE_APPEND);
-        if (telemetryFile) {
-            telemetryFile.write(raw, sizeof(TelemetryFrame));
-            telemetryFile.close();
-        } else {
-            Serial.println("[HEALTH] No se pudo abrir /telemetry_mock.bin");
-        }
-    }
-}
 
 void vTaskHealth(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -83,30 +58,46 @@ void vTaskHealth(void *pvParameters) {
     for (;;) {
         // 1. RECOPILACIÓN (telemetría externa e interna)
         // se lee toda la información disponible (temperatura, batería, paneles, etc)
+        processManualInputFromSerial();
         float currentTemp = readInternalTemp();
         float currentBattery = readBatteryLevel();
 
-        // 2. CHECKING (generación de OK/NOK)
-        // el gestor de salud trabaja con toda la información disponible
-        if (currentTemp > MAX_TEMP_THRESHOLD || currentBattery < MIN_BATTERY_THRESHOLD) {
+        // 2. CHECKING (generación de estado y modo propuesto por bandas)
+        const SatMode_t batteryMode = modeFromBattery(currentBattery);
+        const SatMode_t temperatureMode = modeFromTemperature(currentTemp);
+        const SatMode_t proposedMode = chooseMostRestrictiveMode(batteryMode, temperatureMode);
+
+        healthProposedMode = proposedMode;
+
+        if (proposedMode == MODE_SAFE) {
             systemOK = false;
-            Serial.printf("[HEALTH] Estado: NOK detectado!\n");
+            healthStatus = HEALTH_NOK;
 
-            // 3. LLAMADA A SOLVER (acción inmediata)
-            vSolver(currentTemp > MAX_TEMP_THRESHOLD ? OVERHEAT_ERROR : LOW_BATTERY_ERROR);
-            // en este ejemplo, el solver simplemente imprime un mensaje, pero podría ser una acción más compleja 
-            // como activar un sistema de enfriamiento o reducir la carga del sistema.
+            if (batteryMode == MODE_SAFE) {
+                healthError = LOW_BATTERY_ERROR;
+            } else if (currentTemp > TEMP_SAFE_HIGH_THRESHOLD) {
+                healthError = OVERHEAT_ERROR;
+            } else {
+                healthError = UNKNOWN_ERROR;
+            }
 
-            xFrequency = pdMS_TO_TICKS(500); // aumentar frecuencia en caso de anomalía
+            Serial.printf("[HEALTH] NOK | Modo propuesto: SAFE | Bat: %.1f%% | Temp: %.1f C\n", currentBattery, currentTemp);
+            xFrequency = pdMS_TO_TICKS(500);
         } else {
             systemOK = true;
-            xFrequency = pdMS_TO_TICKS(2000); // frecuencia nominal
+            healthStatus = HEALTH_OK;
+            healthError = NO_ERROR;
+            Serial.printf("[HEALTH] OK | Modo propuesto: %d | Bat: %.1f%% | Temp: %.1f C\n",
+                          proposedMode,
+                          currentBattery,
+                          currentTemp);
+            xFrequency = pdMS_TO_TICKS(2000);
         }
 
         // 4. STATUS REPORT (empaquetado y cifrado)
         // se genera el reporte completo y se deja en el buffer para Downlink
-        packAndEncryptTelemetry(currentTemp, currentBattery, systemOK);
-        Serial.printf("[HEALTH] Telemetría generada y cifrada en buffer.\n");
+        // packAndEncryptTelemetry(currentTemp, currentBattery, systemOK);
+        // Serial.printf("[HEALTH] Telemetría generada y cifrada en buffer.\n");
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }

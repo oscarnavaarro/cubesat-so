@@ -18,7 +18,8 @@ void setup() {
     Serial.println("[BOOT] Control manual activo: w/s bateria +/-5, e/d temperatura +/-2");
 
     xTaskCreatePinnedToCore(vTaskMonitor, "Monitor", 4096, NULL, 3, &hMonitor, 1);
-    // xTaskCreatePinnedToCore(vTaskHealth, "Checking", 3072, NULL, 3, &hChecking, 1);
+    xTaskCreatePinnedToCore(vTaskHealth, "Checking", 3072, NULL, 3, &hChecking, 1);
+    xTaskCreatePinnedToCore(vTaskSolver, "Solver", 3072, NULL, 2, &hSolver, 1);
     xTaskCreatePinnedToCore(vTaskModeManager, "ModeManager", 3072, NULL, 2, &hModeManager, 1);
     xTaskCreatePinnedToCore(vTaskLedsPulsing, "LedsPulsing", 3072, NULL, 2, &ledsPulsingHandle, 1);
     xTaskCreatePinnedToCore(vTaskPostDeployment, "PostDeploy", 3072, NULL, 1, &hPostDeploy, 1);

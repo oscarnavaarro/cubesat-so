@@ -1,32 +1,39 @@
 #include "globals.h"
 #include "../include/task_solver.h"
 
-// Lógica del SOLVER: aplica acciones correctivas según el fallo
-void vSolver(SolverError_t errorID) {
-    Serial.printf("[SOLVER] Aplicando estrategia para error ID: %d\n", errorID);
+namespace {
+SatMode_t solveModeFromHealth(HealthStatus_t status, SolverError_t error, SatMode_t proposedMode) {
+    if (status == HEALTH_NOK && proposedMode != MODE_SAFE) {
+        switch (error) {
+            case LOW_BATTERY_ERROR:
+            case OVERHEAT_ERROR:
+            case COMPONENT_FAIL:
+            case PART_BROKEN:
+            case UNKNOWN_ERROR:
+            default:
+                return MODE_SAFE;
+        }
+    }
 
-    switch(errorID) {
-        case OVERHEAT_ERROR:
-            // Entrar en modo enfriamiento (COOLING_MODE)
-            currentMode = MODE_COOLING;
-            Serial.println("[SOLVER] OVERHEAT_ERROR: activando MODE_COOLING");
-            break;
-        case LOW_BATTERY_ERROR:
-            currentMode = MODE_LOW_POWER;
-            Serial.println("[SOLVER] LOW_BATTERY_ERROR: activando MODE_LOW_POWER");
-            break;
-        case COMPONENT_FAIL:
-            // reiniciar el componente específico
-            Serial.println("[SOLVER] COMPONENT_FAIL: marcar componente para reinicio");
-            break;
-        case PART_BROKEN:
-            // isolar y excluir de la operación
-            currentMode = MODE_SAFE;
-            Serial.println("[SOLVER] PART_BROKEN: activando MODE_SAFE");
-            break;
-        default:
-            currentMode = MODE_SAFE;
-            Serial.println("[SOLVER] ERROR no reconocido: fallback a MODE_SAFE");
-            break;
+    return proposedMode;
+}
+} // namespace
+
+void vTaskSolver(void *pvParameters) {
+    SatMode_t lastPublishedMode = currentMode;
+
+    for (;;) {
+        const SatMode_t solvedMode = solveModeFromHealth(healthStatus, healthError, healthProposedMode);
+        currentMode = solvedMode;
+
+        if (solvedMode != lastPublishedMode) {
+            Serial.printf("[SOLVER] Modo decidido: %d (health=%d, error=%d)\n",
+                          static_cast<int>(solvedMode),
+                          static_cast<int>(healthStatus),
+                          static_cast<int>(healthError));
+            lastPublishedMode = solvedMode;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
