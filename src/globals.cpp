@@ -27,3 +27,5 @@ SatMode_t currentMode = MODE_NOMINAL;
 volatile HealthStatus_t healthStatus = HEALTH_OK;
 volatile SolverError_t healthError = NO_ERROR;
 volatile SatMode_t healthProposedMode = MODE_NOMINAL;
+
+MPU6050 imu;

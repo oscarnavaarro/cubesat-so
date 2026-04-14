@@ -7,6 +7,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include "mpu6050.h"
 
 // Tamaño de stack recomendados (512 - 768 bytes)
 #define STACK_SIZE 512
@@ -48,6 +49,8 @@ extern SatMode_t currentMode;
 extern volatile HealthStatus_t healthStatus;
 extern volatile SolverError_t healthError;
 extern volatile SatMode_t healthProposedMode;
+
+extern MPU6050 imu;
 
 const char *modeToString(SatMode_t mode);
 
