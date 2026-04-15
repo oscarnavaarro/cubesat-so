@@ -37,12 +37,12 @@ void vTaskLedsPulsing(void *pvParameters) {
             i = 0;  // Resetear índice cuando no esté al norte
         }
         
-        // Debug: mostrar ángulo cada 10 ciclos (~500ms)
-        static int debugCounter = 0;
-        if (++debugCounter >= 10) {
-            Serial.printf("[LEDS] Yaw: %.1f° | North: %s\n", yawAngle, isNorth ? "YES" : "NO");
-            debugCounter = 0;
-        }
+        // // Debug: mostrar ángulo cada 10 ciclos (~500ms)
+        // static int debugCounter = 0;
+        // if (++debugCounter >= 10) {
+        //     Serial.printf("[LEDS] Yaw: %.1f° | North: %s\n", yawAngle, isNorth ? "YES" : "NO");
+        //     debugCounter = 0;
+        // }
         
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
