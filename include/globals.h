@@ -50,6 +50,10 @@ extern volatile HealthStatus_t healthStatus;
 extern volatile SolverError_t healthError;
 extern volatile SatMode_t healthProposedMode;
 
+extern volatile float lastTemperature;
+extern volatile float lastBattery;
+extern volatile uint32_t systemUptime;
+
 extern MPU6050 imu;
 
 const char *modeToString(SatMode_t mode);

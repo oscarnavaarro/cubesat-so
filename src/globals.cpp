@@ -28,4 +28,8 @@ volatile HealthStatus_t healthStatus = HEALTH_OK;
 volatile SolverError_t healthError = NO_ERROR;
 volatile SatMode_t healthProposedMode = MODE_NOMINAL;
 
+volatile float lastTemperature = 0.0f;
+volatile float lastBattery = 0.0f;
+volatile uint32_t systemUptime = 0;
+
 MPU6050 imu;

@@ -96,9 +96,10 @@ void vTaskHealth(void *pvParameters) {
         }
 
         // 4. STATUS REPORT (empaquetado y cifrado)
-        // se genera el reporte completo y se deja en el buffer para Downlink
-        // packAndEncryptTelemetry(currentTemp, currentBattery, systemOK);
-        // Serial.printf("[HEALTH] Telemetría generada y cifrada en buffer.\n");
+        // Guardar valores globales para la tarea de Downlink
+        lastTemperature = currentTemp;
+        lastBattery = currentBattery;
+        systemUptime = millis();
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
