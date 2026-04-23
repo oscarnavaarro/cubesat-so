@@ -7,6 +7,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 #include "mpu6050.h"
 #include "sat_config.h"
 
@@ -48,6 +49,22 @@ extern volatile SatMode_t commandedMode;
 extern volatile float lastTemperature;
 extern volatile float lastBattery;
 extern volatile uint32_t systemUptime;
+
+// --- Telemetría thread-safe ---
+// Struct que agrupa un snapshot de telemetría para transferirlo de forma atómica.
+// El Mutex protege tanto la escritura (task_health) como la lectura (task_downlink).
+typedef struct {
+    float       temperatureC;
+    float       batteryPercent;
+    uint32_t    uptimeMs;
+    SatMode_t   mode;
+    HealthStatus_t status;
+    SolverError_t  error;
+} TelemetrySnapshot_t;
+
+// Mutex que protege el acceso al snapshot de telemetría compartida
+extern SemaphoreHandle_t telemetryMutex;
+extern TelemetrySnapshot_t latestTelemetry;
 
 extern MPU6050 imu;
 

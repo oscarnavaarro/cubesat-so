@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 namespace {
-int gBatteryLevel = 50;
+int gBatteryLevel = 60;
 int gTemperatureC = 30;
 
 constexpr int kBatteryMin = 0;

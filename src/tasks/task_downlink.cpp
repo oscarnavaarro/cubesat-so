@@ -16,29 +16,38 @@ void vTaskDownlink(void *pvParameters) {
     for (;;) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
-        // Leer datos thread-safe si es posible, aquí usamos los globales
+        // Copiar el snapshot de telemetría de forma thread-safe antes de serializar.
+        // Se usa una copia local para minimizar el tiempo que el mutex está bloqueado.
+        TelemetrySnapshot_t snap;
+        if (xSemaphoreTake(telemetryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+            snap = latestTelemetry;
+            xSemaphoreGive(telemetryMutex);
+        } else {
+            Serial.println("[DOWNLINK] Advertencia: No se pudo obtener mutex. Ciclo omitido.");
+            continue;
+        }
+
         Telemetry telemetry_msg = Telemetry_init_zero;
-        telemetry_msg.uptimeMs = systemUptime;
-        telemetry_msg.temperatureC = lastTemperature;
-        telemetry_msg.batteryPercent = lastBattery;
-        // Casteos seguros a uint32 para nanopb
-        telemetry_msg.mode = (uint32_t)currentMode;
-        telemetry_msg.status = (uint32_t)healthStatus;
-        telemetry_msg.error = (uint32_t)healthError;
+        telemetry_msg.uptimeMs       = snap.uptimeMs;
+        telemetry_msg.temperatureC   = snap.temperatureC;
+        telemetry_msg.batteryPercent = snap.batteryPercent;
+        telemetry_msg.mode           = (uint32_t)snap.mode;
+        telemetry_msg.status         = (uint32_t)snap.status;
+        telemetry_msg.error          = (uint32_t)snap.error;
 
         uint8_t buffer[128];
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-        
-        bool status = pb_encode(&stream, Telemetry_fields, &telemetry_msg);
-        
-        if (!status) {
+
+        const bool encoded = pb_encode(&stream, Telemetry_fields, &telemetry_msg);
+
+        if (!encoded) {
             Serial.printf("[DOWNLINK] Error codificando Telemetry: %s\n", PB_GET_ERROR(&stream));
             continue;
         }
 
         // Enviar vía CSP sobre UDP
-        bool sent = csp_udp_send(1, CSP_NODE_OBC, CSP_NODE_GS, CSP_PORT_TELEMETRY, 
-                                CSP_PORT_TELEMETRY, buffer, stream.bytes_written, 
+        const bool sent = csp_udp_send(1, CSP_NODE_OBC, CSP_NODE_GS, CSP_PORT_TELEMETRY,
+                                CSP_PORT_TELEMETRY, buffer, stream.bytes_written,
                                 GS_IP_ADDRESS, GS_UDP_PORT);
         if (sent) {
             Serial.printf("[DOWNLINK] Telemetría enviada a GS: %d bytes.\n", stream.bytes_written);

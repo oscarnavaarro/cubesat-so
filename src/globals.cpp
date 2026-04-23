@@ -33,4 +33,9 @@ volatile float lastTemperature = 0.0f;
 volatile float lastBattery = 0.0f;
 volatile uint32_t systemUptime = 0;
 
+// Mutex y snapshot de telemetría thread-safe.
+// El mutex se crea en main.cpp antes de lanzar las tareas.
+SemaphoreHandle_t telemetryMutex = NULL;
+TelemetrySnapshot_t latestTelemetry = {0.0f, 0.0f, 0, MODE_NOMINAL, HEALTH_OK, NO_ERROR};
+
 MPU6050 imu;

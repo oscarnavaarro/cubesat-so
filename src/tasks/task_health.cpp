@@ -98,11 +98,19 @@ void vTaskHealth(void *pvParameters) {
             xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
         }
 
-        // 4. STATUS REPORT (empaquetado y cifrado)
-        // Guardar valores globales para la tarea de Downlink
-        lastTemperature = currentTemp;
-        lastBattery = currentBattery;
-        systemUptime = millis();
+        // 4. STATUS REPORT: Empaquetar telemetría en el snapshot compartido de forma thread-safe.
+        // El mutex garantiza que task_downlink nunca lea un estado a medio escribir.
+        if (xSemaphoreTake(telemetryMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            latestTelemetry.temperatureC   = currentTemp;
+            latestTelemetry.batteryPercent = currentBattery;
+            latestTelemetry.uptimeMs       = millis();
+            latestTelemetry.mode           = currentMode;
+            latestTelemetry.status         = healthStatus;
+            latestTelemetry.error          = healthError;
+            xSemaphoreGive(telemetryMutex);
+        } else {
+            Serial.println("[HEALTH] Advertencia: No se pudo obtener el mutex. Telemetria no actualizada.");
+        }
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }

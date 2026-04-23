@@ -34,6 +34,13 @@ void setup() {
     Serial.println("[BOOT] Iniciando scheduler de tareas...");
     Serial.println("[BOOT] Control manual activo: w/s bateria +/-5, e/d temperatura +/-2");
 
+    // Crear primitivas de sincronización antes de lanzar las tareas
+    telemetryMutex = xSemaphoreCreateMutex();
+    if (telemetryMutex == NULL) {
+        Serial.println("[BOOT] FATAL: No se pudo crear el mutex de telemetria.");
+        SYSTEM_RESET();
+    }
+
     xTaskCreate(vTaskMonitor, "Monitor", 3072, NULL, 3, &hMonitor);
     xTaskCreate(vTaskHealth, "Checking", 3072, NULL, 3, &hChecking);
     xTaskCreate(vTaskUplink, "Uplink", 3072, NULL, 3, &hUplink);
