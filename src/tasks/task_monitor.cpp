@@ -1,9 +1,9 @@
 #include "globals.h"
 #include "../include/task_monitor.h"
 #include "../include/task_health.h"
+#include "../include/sat_config.h"
 
-constexpr TickType_t kMonitorPeriod = pdMS_TO_TICKS(5000);
-constexpr uint32_t kHeapCriticalBytes = 20 * 1024;
+constexpr TickType_t kMonitorPeriod = pdMS_TO_TICKS(DELAY_MONITOR_MS);
 
 const char *taskStateToString(eTaskState state) {
     switch (state) {
@@ -46,7 +46,7 @@ void printTaskAudit(const char *name, TaskHandle_t handle, uint32_t stackDepthWo
         static_cast<unsigned long>(usedBytes),
         static_cast<double>(usedPercent));
 
-    if (minFreeBytes < 256) {
+    if (minFreeBytes < MONITOR_STACK_CRITICAL_BYTES) {
         Serial.printf("ALERTA: Stack critico en %s\n", name);
     }
 }
@@ -59,11 +59,11 @@ void vTaskMonitor(void *pvParameters) {
     for (;;) {
         Serial.println("\n--- MONITOR DE SISTEMA ---");
 
-        const uint32_t freeHeap = ESP.getFreeHeap();
+        const uint32_t freeHeap = HAL_GetFreeHeap();
 
         Serial.printf("Memoria libre: %lu B\n", static_cast<unsigned long>(freeHeap));
 
-        if (freeHeap < kHeapCriticalBytes) {
+        if (freeHeap < MONITOR_HEAP_CRITICAL_BYTES) {
             Serial.println("ALERTA: Heap global bajo, riesgo de bloqueo/fragmentacion.");
         }
 

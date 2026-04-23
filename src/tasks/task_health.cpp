@@ -1,7 +1,6 @@
 #include "globals.h"
 #include "../include/task_health.h"
 #include "../include/battery.h"
-#include <SPIFFS.h>
 #include <string.h>
 
 uint8_t telemetryBuffer[TELEMETRY_BUFFER_SIZE] = {0};
@@ -52,8 +51,8 @@ float readBatteryLevel(void) {
 
 void vTaskHealth(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    // Frecuencia dinámica: nominal cada 2s, anomalía 500ms
-    TickType_t xFrequency = pdMS_TO_TICKS(2000);
+    // Frecuencia dinámica: nominal (DELAY_HEALTH_NOMINAL_MS), anomalía (DELAY_HEALTH_ALERT_MS)
+    TickType_t xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
 
     for (;;) {
         // 1. RECOPILACIÓN (telemetría externa e interna)
@@ -86,7 +85,7 @@ void vTaskHealth(void *pvParameters) {
             }
 
             Serial.printf("[HEALTH] NOK | Modo propuesto: SAFE | Bat: %.1f%% | Temp: %.1f C\n", currentBattery, currentTemp);
-            xFrequency = pdMS_TO_TICKS(500);
+            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_ALERT_MS);
         } else {
             systemOK = true;
             healthStatus = HEALTH_OK;
@@ -96,7 +95,7 @@ void vTaskHealth(void *pvParameters) {
                           modeToString(proposedMode),
                           currentBattery,
                           currentTemp);
-            xFrequency = pdMS_TO_TICKS(2000);
+            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
         }
 
         // 4. STATUS REPORT (empaquetado y cifrado)

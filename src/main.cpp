@@ -10,9 +10,7 @@
 #include "../include/task_downlink.h"
 #include "../include/task_uplink.h"
 #include "../include/csp_udp.h"
-
-const char* ssid = "CubeSat_GS";
-const char* password = "cubesat_password";
+#include "sat_config.h"
 
 void setup() {
     Serial.begin(115200);
@@ -22,7 +20,7 @@ void setup() {
     digitalWrite(LED_PIN, LOW);
 
     Serial.println("\n[BOOT] Iniciando sistema de radio...");
-    WiFi.begin(ssid, password);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -36,14 +34,14 @@ void setup() {
     Serial.println("[BOOT] Iniciando scheduler de tareas...");
     Serial.println("[BOOT] Control manual activo: w/s bateria +/-5, e/d temperatura +/-2");
 
-    xTaskCreatePinnedToCore(vTaskMonitor, "Monitor", 3072, NULL, 3, &hMonitor, 1);
-    xTaskCreatePinnedToCore(vTaskHealth, "Checking", 3072, NULL, 3, &hChecking, 1);
-   xTaskCreatePinnedToCore(vTaskUplink, "Uplink", 3072, NULL, 3, &hUplink, 0); // Core 0 = Radio Rx (Alto rend)
-    xTaskCreatePinnedToCore(vTaskSolver, "Solver", 3072, NULL, 2, &hSolver, 1);
-    xTaskCreatePinnedToCore(vTaskModeManager, "ModeManager", 2048, NULL, 2, &hModeManager, 1);
-    xTaskCreatePinnedToCore(vTaskLedsPulsing, "LedsPulsing", 2048, NULL, 2, &ledsPulsingHandle, 1);
-    xTaskCreatePinnedToCore(vTaskDownlink, "Downlink", 3072, NULL, 1, &hDownlink, 0); // Core 0 = Radio Tx (Baja prio)
-    xTaskCreatePinnedToCore(vTaskPostDeployment, "PostDeploy", 2048, NULL, 1, &hPostDeploy, 1);
+    xTaskCreate(vTaskMonitor, "Monitor", 3072, NULL, 3, &hMonitor);
+    xTaskCreate(vTaskHealth, "Checking", 3072, NULL, 3, &hChecking);
+    xTaskCreate(vTaskUplink, "Uplink", 3072, NULL, 3, &hUplink);
+    xTaskCreate(vTaskSolver, "Solver", 3072, NULL, 2, &hSolver);
+    xTaskCreate(vTaskModeManager, "ModeManager", 2048, NULL, 2, &hModeManager);
+    xTaskCreate(vTaskLedsPulsing, "LedsPulsing", 2048, NULL, 2, &ledsPulsingHandle);
+    xTaskCreate(vTaskDownlink, "Downlink", 3072, NULL, 1, &hDownlink);
+    xTaskCreate(vTaskPostDeployment, "PostDeploy", 2048, NULL, 1, &hPostDeploy);
     
     Serial.println("[BOOT] Tareas creadas.");
 }

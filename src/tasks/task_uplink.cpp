@@ -1,14 +1,13 @@
 #include "../include/task_uplink.h"
 #include "../include/globals.h"
 #include "../include/csp_udp.h"
+#include "../include/sat_config.h"
 #include "sat.pb.h"
 #include <pb_decode.h>
 #include <mbedtls/md.h>
 #include <Arduino.h>
 
 TaskHandle_t hUplink = NULL;
-// Clave Pre-Compartida para Validar los comandos de la Tierra (Debe coincidir en el script GS python o ESP32 GS)
-static const char* PSK = "cubesat_secret_key_123";
 
 static bool verify_hmac(const uint8_t* payload, size_t payload_len, const uint8_t* received_mac) {
     uint8_t mac[32];
@@ -16,7 +15,7 @@ static bool verify_hmac(const uint8_t* payload, size_t payload_len, const uint8_
     mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
     mbedtls_md_init(&ctx);
     mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
-    mbedtls_md_hmac_starts(&ctx, (const unsigned char *)PSK, strlen(PSK));
+    mbedtls_md_hmac_starts(&ctx, (const unsigned char *)UPLINK_PSK, strlen(UPLINK_PSK));
     mbedtls_md_hmac_update(&ctx, payload, payload_len);
     mbedtls_md_hmac_finish(&ctx, mac);
     mbedtls_md_free(&ctx);
@@ -56,7 +55,7 @@ void vTaskUplink(void *pvParameters) {
                     if (cmd.action == Command_Action_RESTART) {
                         Serial.println("[UPLINK] Ejecutando orden RESET desde Tierra...");
                         vTaskDelay(200 / portTICK_PERIOD_MS);
-                        ESP.restart();
+                        SYSTEM_RESET();
                     } else if (cmd.action == Command_Action_CHANGE_MODE) {
                         SatMode_t t_mode = (SatMode_t)cmd.target_mode;
                         commandedMode = t_mode;

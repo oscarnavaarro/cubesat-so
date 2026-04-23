@@ -1,5 +1,6 @@
 #include "globals.h"
 #include "../include/task_mode_manager.h"
+#include "../include/sat_config.h"
 
 void vTaskModeManager(void *pvParameters) {
     bool payloadIsSuspended = false;
@@ -21,6 +22,6 @@ void vTaskModeManager(void *pvParameters) {
             payloadIsSuspended = shouldSuspendPayload;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(DELAY_MODE_MANAGER_MS));
     }
 }

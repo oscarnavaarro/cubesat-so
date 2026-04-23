@@ -8,13 +8,7 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 #include "mpu6050.h"
-
-// Tamaño de stack recomendados (512 - 768 bytes)
-#define STACK_SIZE 512
-// Prioridades: El bloque de supervisión debe ser el más alto
-#define PRIORITY_SUPERVISION 3
-
-#define LED_PIN 2
+#include "sat_config.h"
 
 extern QueueHandle_t modeQueue;
 extern TaskHandle_t hMonitor;
