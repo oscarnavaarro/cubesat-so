@@ -1,0 +1,2 @@
+SecureCommand.payload max_size:128
+SecureCommand.mac max_size:32

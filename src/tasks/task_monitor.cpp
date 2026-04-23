@@ -67,12 +67,12 @@ void vTaskMonitor(void *pvParameters) {
             Serial.println("ALERTA: Heap global bajo, riesgo de bloqueo/fragmentacion.");
         }
 
-        printTaskAudit("Monitor", hMonitor, 4096);
-        printTaskAudit("Checking", hChecking, 3072);
-        printTaskAudit("Solver", hSolver, 3072);
-        printTaskAudit("ModeManager", hModeManager, 3072);
-        printTaskAudit("LedsPulsing", ledsPulsingHandle, 3072);
-        printTaskAudit("PostDeploy", hPostDeploy, 3072);
+        // printTaskAudit("Monitor", hMonitor, 4096);
+        // printTaskAudit("Checking", hChecking, 3072);
+        // printTaskAudit("Solver", hSolver, 3072);
+        // printTaskAudit("ModeManager", hModeManager, 3072);
+        // printTaskAudit("LedsPulsing", ledsPulsingHandle, 3072);
+        // printTaskAudit("PostDeploy", hPostDeploy, 3072);
 
         vTaskDelayUntil(&xLastWakeTime, kMonitorPeriod);
     }

@@ -40,14 +40,14 @@ void vTaskUplink(void *pvParameters) {
                 }
                 
                 // secure_msg decodificado. Extraer HMAC validando contra MAC recibido
-                if (!verify_hmac(secure_msg.payload, secure_msg.payload_size, secure_msg.mac)) {
+                if (!verify_hmac(secure_msg.payload.bytes, secure_msg.payload.size, secure_msg.mac.bytes)) {
                     Serial.println("[UPLINK] Fallo HMAC, se deniega acceso al comando (Posible atacante).");
                     continue;
                 }
                 
                 // Decodificar el Payload (Command object interior)
                 Command cmd = Command_init_zero;
-                pb_istream_t cmd_stream = pb_istream_from_buffer(secure_msg.payload, secure_msg.payload_size);
+                pb_istream_t cmd_stream = pb_istream_from_buffer(secure_msg.payload.bytes, secure_msg.payload.size);
                 
                 if (pb_decode(&cmd_stream, Command_fields, &cmd)) {
                     Serial.printf("[UPLINK] ✅ Comando Autenticado. Accion: %d, TargetMode: %d, Nonce: %d\n", 
@@ -59,10 +59,8 @@ void vTaskUplink(void *pvParameters) {
                         ESP.restart();
                     } else if (cmd.action == Command_Action_CHANGE_MODE) {
                         SatMode_t t_mode = (SatMode_t)cmd.target_mode;
-                        if (modeQueue != NULL) {
-                            xQueueSend(modeQueue, &t_mode, portMAX_DELAY);
-                            Serial.printf("[UPLINK] Solicitando cambio de modo a: %s\n", modeToString(t_mode));
-                        }
+                        commandedMode = t_mode;
+                        Serial.printf("[UPLINK] Solicitando cambio manual de modo a: %s\n", modeToString(t_mode));
                     }
                 } else {
                     Serial.println("[UPLINK] Fallo decodificando payload interno validado.");

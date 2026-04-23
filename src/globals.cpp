@@ -27,6 +27,7 @@ SatMode_t currentMode = MODE_NOMINAL;
 volatile HealthStatus_t healthStatus = HEALTH_OK;
 volatile SolverError_t healthError = NO_ERROR;
 volatile SatMode_t healthProposedMode = MODE_NOMINAL;
+volatile SatMode_t commandedMode = MODE_NOMINAL;
 
 volatile float lastTemperature = 0.0f;
 volatile float lastBattery = 0.0f;

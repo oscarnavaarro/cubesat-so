@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+// Telemetry from satellite to ground
+message Telemetry {
+    uint32 uptimeMs = 1;
+    float temperatureC = 2;
+    float batteryPercent = 3;
+    uint32 mode = 4; // SatMode_t
+    uint32 status = 5; // HealthStatus_t
+    uint32 error = 6; // SolverError_t
+}
+
+// Commands from ground to satellite
+message Command {
+    enum Action {
+        NOOP = 0;
+        RESTART = 1;
+        CHANGE_MODE = 2;
+    }
+    Action action = 1;
+    uint32 target_mode = 2; // Required if action == CHANGE_MODE
+    uint32 nonce = 3; // For replay protection
+}
+
+// Secure wrapper for uplink
+message SecureCommand {
+    bytes payload = 1; // Serialized Command message
+    bytes mac = 2; // HMAC-SHA256 signature of payload
+}

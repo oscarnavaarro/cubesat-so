@@ -65,7 +65,11 @@ void vTaskHealth(void *pvParameters) {
         // 2. CHECKING (generación de estado y modo propuesto por bandas)
         const SatMode_t batteryMode = modeFromBattery(currentBattery);
         const SatMode_t temperatureMode = modeFromTemperature(currentTemp);
-        const SatMode_t proposedMode = chooseMostRestrictiveMode(batteryMode, temperatureMode);
+        const SatMode_t autonomousMode = chooseMostRestrictiveMode(batteryMode, temperatureMode);
+
+        // Mezclar modo autónomo con el modo comandado manualmente. 
+        // El comando manual puede forzar un modo, pero la seguridad autónoma siempre tiene prioridad si es más estricta.
+        const SatMode_t proposedMode = chooseMostRestrictiveMode(autonomousMode, commandedMode);
 
         healthProposedMode = proposedMode;
 

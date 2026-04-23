@@ -49,6 +49,7 @@ extern SatMode_t currentMode;
 extern volatile HealthStatus_t healthStatus;
 extern volatile SolverError_t healthError;
 extern volatile SatMode_t healthProposedMode;
+extern volatile SatMode_t commandedMode;
 
 extern volatile float lastTemperature;
 extern volatile float lastBattery;

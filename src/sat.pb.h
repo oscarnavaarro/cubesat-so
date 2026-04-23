@@ -36,20 +36,21 @@ typedef struct _Command {
     uint32_t nonce;
 } Command;
 
+typedef PB_BYTES_ARRAY_T(128) SecureCommand_payload_t;
+typedef PB_BYTES_ARRAY_T(32) SecureCommand_mac_t;
+
 typedef struct _SecureCommand {
-    pb_size_t payload_size;
-    pb_byte_t payload[128];
-    pb_size_t mac_size;
-    pb_byte_t mac[32];
+    SecureCommand_payload_t payload;
+    SecureCommand_mac_t mac;
 } SecureCommand;
 
 /* Initializer values */
 #define Telemetry_init_default                   {0, 0, 0, 0, 0, 0}
 #define Command_init_default                     {Command_Action_NOOP, 0, 0}
-#define SecureCommand_init_default               {0, {0}, 0, {0}}
+#define SecureCommand_init_default               {{0, {0}}, {0, {0}}}
 #define Telemetry_init_zero                      {0, 0, 0, 0, 0, 0}
 #define Command_init_zero                        {Command_Action_NOOP, 0, 0}
-#define SecureCommand_init_zero                  {0, {0}, 0, {0}}
+#define SecureCommand_init_zero                  {{0, {0}}, {0, {0}}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define Telemetry_uptimeMs_tag                   1
