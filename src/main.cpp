@@ -15,7 +15,7 @@ const char* ssid = "CubeSat_GS";
 const char* password = "cubesat_password";
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     delay(1000);
 
     pinMode(LED_PIN, OUTPUT);
@@ -28,6 +28,8 @@ void setup() {
         Serial.print(".");
     }
     Serial.println("\n[BOOT] Conectado al WiFi de la Estación Terrestre");
+
+    WiFi.setSleep(false); 
 
     csp_udp_init(CSP_PORT_COMMANDS);
 

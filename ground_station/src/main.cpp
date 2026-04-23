@@ -85,7 +85,7 @@ void send_command(Command_Action action, uint32_t target_mode) {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     delay(1000);
     Serial.println("\n\n[GS] Iniciando Estación Terrestre...");
 
