@@ -1,44 +1,15 @@
+// FDIR - Fault Detection, Isolation and Recovery
+// Esta tarea es el subsistema de detección de fallos del satélite.
+// Su ÚNICA responsabilidad es leer sensores, actualizar los valores en telemetría,
+// y emitir eventos hacia la cola FDIR.
+// NO decide modos de operación ni estados de salud globales.
+
 #include "globals.h"
 #include "../include/task_health.h"
 #include "../include/battery.h"
 #include <string.h>
 
 uint8_t telemetryBuffer[TELEMETRY_BUFFER_SIZE] = {0};
-bool systemOK = true;
-
-namespace {
-struct TelemetryFrame {
-    uint32_t uptimeMs;
-    float temperatureC;
-    float batteryPercent;
-    uint8_t status;
-    uint8_t crc;
-};
-
-SatMode_t modeFromTemperature(float temperatureC) {
-    if (temperatureC > TEMP_SAFE_HIGH_THRESHOLD || temperatureC < TEMP_SAFE_LOW_THRESHOLD) {
-        return MODE_SAFE;
-    }
-    if (temperatureC >= TEMP_COOLING_THRESHOLD) {
-        return MODE_COOLING;
-    }
-    return MODE_NOMINAL;
-}
-
-SatMode_t modeFromBattery(float batteryPercent) {
-    if (batteryPercent < BATTERY_SAFE_THRESHOLD) {
-        return MODE_SAFE;
-    }
-    if (batteryPercent <= BATTERY_NOMINAL_THRESHOLD) {
-        return MODE_LOW_POWER;
-    }
-    return MODE_NOMINAL;
-}
-
-SatMode_t chooseMostRestrictiveMode(SatMode_t batteryMode, SatMode_t temperatureMode) {
-    return (static_cast<int>(batteryMode) >= static_cast<int>(temperatureMode)) ? batteryMode : temperatureMode;
-}
-} // namespace
 
 float readInternalTemp(void) {
     return static_cast<float>(readManualTemperature());
@@ -48,68 +19,84 @@ float readBatteryLevel(void) {
     return static_cast<float>(simulateBatteryLevel());
 }
 
+// Clasifica la temperatura en un evento FDIR.
+static FdirEvent_t classifyTemperature(float temperatureC) {
+    if (temperatureC > TEMP_SAFE_HIGH_THRESHOLD) {
+        return FDIR_EVENT_OVERHEAT;
+    }
+    if (temperatureC < TEMP_SAFE_LOW_THRESHOLD) {
+        return FDIR_EVENT_UNDERHEAT;
+    }
+    if (temperatureC >= TEMP_COOLING_THRESHOLD) {
+        return FDIR_EVENT_HIGH_TEMP;
+    }
+    return FDIR_EVENT_NOMINAL;
+}
+
+// Clasifica el nivel de batería en un evento FDIR.
+static FdirEvent_t classifyBattery(float batteryPercent) {
+    if (batteryPercent < BATTERY_SAFE_THRESHOLD) {
+        return FDIR_EVENT_LOW_BATTERY;
+    }
+    if (batteryPercent <= BATTERY_NOMINAL_THRESHOLD) {
+        return FDIR_EVENT_LOW_POWER_BATTERY;
+    }
+    return FDIR_EVENT_NOMINAL;
+}
+
+// Devuelve el evento más grave de los dos recibidos.
+// El enum está ordenado por severidad (NOMINAL=0, ..., OVERHEAT/UNDERHEAT).
+static FdirEvent_t mostSevereEvent(FdirEvent_t a, FdirEvent_t b) {
+    return (static_cast<int>(a) >= static_cast<int>(b)) ? a : b;
+}
 
 void vTaskHealth(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    // Frecuencia dinámica: nominal (DELAY_HEALTH_NOMINAL_MS), anomalía (DELAY_HEALTH_ALERT_MS)
     TickType_t xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
 
     for (;;) {
-        // 1. RECOPILACIÓN (telemetría externa e interna)
-        // se lee toda la información disponible (temperatura, batería, paneles, etc)
+        // 1. RECOPILACIÓN: leer sensores
         processManualInputFromSerial();
-        float currentTemp = readInternalTemp();
-        float currentBattery = readBatteryLevel();
+        const float currentTemp    = readInternalTemp();
+        const float currentBattery = readBatteryLevel();
 
-        // 2. CHECKING (generación de estado y modo propuesto por bandas)
-        const SatMode_t batteryMode = modeFromBattery(currentBattery);
-        const SatMode_t temperatureMode = modeFromTemperature(currentTemp);
-        const SatMode_t autonomousMode = chooseMostRestrictiveMode(batteryMode, temperatureMode);
+        // 2. CLASIFICACIÓN: convertir lecturas en eventos FDIR
+        const FdirEvent_t tempEvent    = classifyTemperature(currentTemp);
+        const FdirEvent_t batteryEvent = classifyBattery(currentBattery);
+        const FdirEvent_t worstEvent   = mostSevereEvent(tempEvent, batteryEvent);
 
-        // Mezclar modo autónomo con el modo comandado manualmente. 
-        // El comando manual puede forzar un modo, pero la seguridad autónoma siempre tiene prioridad si es más estricta.
-        const SatMode_t proposedMode = chooseMostRestrictiveMode(autonomousMode, commandedMode);
-
-        healthProposedMode = proposedMode;
-
-        if (proposedMode == MODE_SAFE) {
-            systemOK = false;
-            healthStatus = HEALTH_NOK;
-
-            if (batteryMode == MODE_SAFE) {
-                healthError = LOW_BATTERY_ERROR;
-            } else if (currentTemp > TEMP_SAFE_HIGH_THRESHOLD) {
-                healthError = OVERHEAT_ERROR;
-            } else {
-                healthError = UNKNOWN_ERROR;
-            }
-
-            Serial.printf("[HEALTH] NOK | Modo propuesto: SAFE | Bat: %.1f%% | Temp: %.1f C\n", currentBattery, currentTemp);
-            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_ALERT_MS);
-        } else {
-            systemOK = true;
-            healthStatus = HEALTH_OK;
-            healthError = NO_ERROR;
-            Serial.printf("[HEALTH] OK | Modo actual: %s | Modo propuesto: %s | Bat: %.1f%% | Temp: %.1f C\n",
-                          modeToString(currentMode),
-                          modeToString(proposedMode),
-                          currentBattery,
-                          currentTemp);
-            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
+        // 3. EMISIÓN: enviar el evento más grave al Mode Manager.
+        if (fdirQueue != NULL) {
+            xQueueSend(fdirQueue, &worstEvent, 0);
         }
 
-        // 4. STATUS REPORT: Empaquetar telemetría en el snapshot compartido de forma thread-safe.
-        // El mutex garantiza que task_downlink nunca lea un estado a medio escribir.
+        // 4. FRECUENCIA DE REPORTE: Sólo aceleramos a 500ms si el evento requiere modo SAFE
+        bool isSafeEvent = (worstEvent == FDIR_EVENT_OVERHEAT) || 
+                           (worstEvent == FDIR_EVENT_UNDERHEAT) || 
+                           (worstEvent == FDIR_EVENT_LOW_BATTERY);
+                           
+        if (isSafeEvent) {
+            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_ALERT_MS);
+            Serial.printf("[FDIR] ALERTA CRITICA (%d) | Bat: %.1f%% | Temp: %.1f C\n",
+                          static_cast<int>(worstEvent), currentBattery, currentTemp);
+        } else if (worstEvent != FDIR_EVENT_NOMINAL) {
+            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
+            Serial.printf("[FDIR] EVENTO (%d) | Bat: %.1f%% | Temp: %.1f C\n",
+                          static_cast<int>(worstEvent), currentBattery, currentTemp);
+        } else {
+            xFrequency = pdMS_TO_TICKS(DELAY_HEALTH_NOMINAL_MS);
+            Serial.printf("[FDIR] OK | Bat: %.1f%% | Temp: %.1f C\n", currentBattery, currentTemp);
+        }
+
+        // 5. TELEMETRÍA: actualizar SOLO sensores en el snapshot.
+        // El Mode Manager se encargará de actualizar 'mode', 'status' y 'error'.
         if (xSemaphoreTake(telemetryMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             latestTelemetry.temperatureC   = currentTemp;
             latestTelemetry.batteryPercent = currentBattery;
             latestTelemetry.uptimeMs       = millis();
-            latestTelemetry.mode           = currentMode;
-            latestTelemetry.status         = healthStatus;
-            latestTelemetry.error          = healthError;
             xSemaphoreGive(telemetryMutex);
         } else {
-            Serial.println("[HEALTH] Advertencia: No se pudo obtener el mutex. Telemetria no actualizada.");
+            Serial.println("[FDIR] Advertencia: No se pudo obtener mutex. Telemetria de sensores no actualizada.");
         }
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);

@@ -10,8 +10,8 @@ TaskHandle_t hDownlink = NULL;
 
 void vTaskDownlink(void *pvParameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    // Prioridad baja: envía por la ventana/loop cada N seg
-    const TickType_t xFrequency = pdMS_TO_TICKS(DELAY_DOWNLINK_MS);
+    // Prioridad baja: envía por la ventana/loop cada N seg. Dinámico según el modo.
+    TickType_t xFrequency = pdMS_TO_TICKS(DELAY_DOWNLINK_MS);
     
     for (;;) {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
@@ -34,6 +34,13 @@ void vTaskDownlink(void *pvParameters) {
         telemetry_msg.mode           = (uint32_t)snap.mode;
         telemetry_msg.status         = (uint32_t)snap.status;
         telemetry_msg.error          = (uint32_t)snap.error;
+
+        // Ajustar frecuencia del próximo ciclo según el modo actual
+        if (snap.mode == MODE_SAFE) {
+            xFrequency = pdMS_TO_TICKS(DELAY_DOWNLINK_ALERT_MS);
+        } else {
+            xFrequency = pdMS_TO_TICKS(DELAY_DOWNLINK_MS);
+        }
 
         uint8_t buffer[128];
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));

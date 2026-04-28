@@ -34,6 +34,7 @@ static const char* const UPLINK_PSK = "cubesat_secret_key_123";
 
 // Tiempos de las tareas (en milisegundos)
 #define DELAY_DOWNLINK_MS 5000
+#define DELAY_DOWNLINK_ALERT_MS 1000
 #define DELAY_HEALTH_NOMINAL_MS 2000
 #define DELAY_HEALTH_ALERT_MS 500
 #define DELAY_MODE_MANAGER_MS 1000

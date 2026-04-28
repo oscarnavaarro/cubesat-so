@@ -41,6 +41,13 @@ void setup() {
         SYSTEM_RESET();
     }
 
+    // Cola FDIR: capacidad para 8 eventos FdirEvent_t.
+    fdirQueue = xQueueCreate(8, sizeof(FdirEvent_t));
+    if (fdirQueue == NULL) {
+        Serial.println("[BOOT] FATAL: No se pudo crear la cola FDIR.");
+        SYSTEM_RESET();
+    }
+
     xTaskCreate(vTaskMonitor, "Monitor", 3072, NULL, 3, &hMonitor);
     xTaskCreate(vTaskHealth, "Checking", 3072, NULL, 3, &hChecking);
     xTaskCreate(vTaskUplink, "Uplink", 3072, NULL, 3, &hUplink);

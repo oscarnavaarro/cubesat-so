@@ -16,6 +16,7 @@ const char *modeToString(SatMode_t mode) {
 }
 
 QueueHandle_t modeQueue = NULL;
+QueueHandle_t fdirQueue = NULL;
 TaskHandle_t hMonitor = NULL;
 TaskHandle_t hChecking = NULL;
 TaskHandle_t hSolver = NULL;
@@ -26,7 +27,6 @@ TaskHandle_t ledsPulsingHandle = NULL;
 SatMode_t currentMode = MODE_NOMINAL;
 volatile HealthStatus_t healthStatus = HEALTH_OK;
 volatile SolverError_t healthError = NO_ERROR;
-volatile SatMode_t healthProposedMode = MODE_NOMINAL;
 volatile SatMode_t commandedMode = MODE_NOMINAL;
 
 volatile float lastTemperature = 0.0f;

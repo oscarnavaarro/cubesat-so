@@ -12,6 +12,7 @@
 #include "sat_config.h"
 
 extern QueueHandle_t modeQueue;
+extern QueueHandle_t fdirQueue;
 extern TaskHandle_t hMonitor;
 extern TaskHandle_t hChecking;
 extern TaskHandle_t hSolver;
@@ -36,6 +37,15 @@ typedef enum {
 } SolverError_t;
 
 typedef enum {
+    FDIR_EVENT_NOMINAL = 0,      // Todo en orden, volver a modo nominal si es posible
+    FDIR_EVENT_LOW_POWER_BATTERY,// Batería entre BATTERY_SAFE y BATTERY_NOMINAL (modo LOW_POWER)
+    FDIR_EVENT_LOW_BATTERY,      // Batería por debajo del umbral de seguridad (modo SAFE)
+    FDIR_EVENT_HIGH_TEMP,        // Temperatura elevada (requiere modo cooling)
+    FDIR_EVENT_OVERHEAT,         // Temperatura por encima del umbral crítico
+    FDIR_EVENT_UNDERHEAT,        // Temperatura por debajo del umbral frío
+} FdirEvent_t;
+
+typedef enum {
     HEALTH_OK = 0,
     HEALTH_NOK = 1,
 } HealthStatus_t;
@@ -43,7 +53,6 @@ typedef enum {
 extern SatMode_t currentMode;
 extern volatile HealthStatus_t healthStatus;
 extern volatile SolverError_t healthError;
-extern volatile SatMode_t healthProposedMode;
 extern volatile SatMode_t commandedMode;
 
 extern volatile float lastTemperature;

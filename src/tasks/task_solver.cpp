@@ -1,37 +1,30 @@
+// SOLVER - Diagnóstico y Clasificación de Errores
+// Con la arquitectura FDIR/Mode Manager, la decisión de modo es responsabilidad exclusiva
+// del Mode Manager. Esta tarea queda reducida a un clasificador de errores que
+// actualiza healthError según el estado de salud, para enriquecer la telemetría.
+
 #include "globals.h"
 #include "../include/task_solver.h"
-
-namespace {
-SatMode_t solveModeFromHealth(HealthStatus_t status, SolverError_t error, SatMode_t proposedMode) {
-    if (status == HEALTH_NOK && proposedMode != MODE_SAFE) {
-        switch (error) {
-            case LOW_BATTERY_ERROR:
-            case OVERHEAT_ERROR:
-            case COMPONENT_FAIL:
-            case PART_BROKEN:
-            case UNKNOWN_ERROR:
-            default:
-                return MODE_SAFE;
-        }
-    }
-
-    return proposedMode;
-}
-} // namespace
+#include "../include/sat_config.h"
 
 void vTaskSolver(void *pvParameters) {
-    SatMode_t lastPublishedMode = currentMode;
-
     for (;;) {
-        const SatMode_t solvedMode = solveModeFromHealth(healthStatus, healthError, healthProposedMode);
-        currentMode = solvedMode;
-
-        if (solvedMode != lastPublishedMode) {
-            Serial.printf("[SOLVER] Modo decidido: %d (health=%d, error=%d)\n",
-                          static_cast<int>(solvedMode),
-                          static_cast<int>(healthStatus),
-                          static_cast<int>(healthError));
-            lastPublishedMode = solvedMode;
+        // Clasificar el error en función del modo actual y el estado de salud.
+        // Solo actualiza healthError para fines de telemetría; no cambia currentMode ni healthStatus.
+        if (healthStatus == HEALTH_NOK && healthError == NO_ERROR) {
+            // Si el Mode Manager puso HEALTH_NOK pero no hay error clasificado aún,
+            // intentamos inferirlo del modo actual.
+            switch (currentMode) {
+                case MODE_SAFE:
+                    // No podemos saber el motivo exacto sin los valores de sensor aquí,
+                    // pero el FDIR ya lo habrá detallado en su log.
+                    healthError = UNKNOWN_ERROR;
+                    break;
+                default:
+                    break;
+            }
+        } else if (healthStatus == HEALTH_OK) {
+            healthError = NO_ERROR;
         }
 
         vTaskDelay(pdMS_TO_TICKS(500));
